@@ -1,4 +1,4 @@
-app = "degreesofseparation-a3c7"
+app = "degreesofseparation-nding"
 primary_region = "dfw"
 
 kill_signal = "SIGINT"
