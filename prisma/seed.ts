@@ -4,18 +4,19 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function seed() {
-  const email = "rachel@remix.run";
-
   // cleanup the existing database
-  await prisma.user.delete({ where: { email } }).catch(() => {
-    // no worries if it doesn't exist yet
-  });
+  await prisma.user
+    .deleteMany({ where: { email: { startsWith: "player" } } })
+    .catch(() => {
+      // no worries if it doesn't exist yet
+    });
 
-  const hashedPassword = await bcrypt.hash("racheliscool", 10);
+  const hashedPassword = await bcrypt.hash("password", 10);
 
-  const user = await prisma.user.create({
+  const player1 = await prisma.user.create({
     data: {
-      email,
+      email: "player1@modiphy.net",
+      name: "Neil",
       password: {
         create: {
           hash: hashedPassword,
@@ -24,19 +25,33 @@ async function seed() {
     },
   });
 
-  await prisma.note.create({
+  const player2 = await prisma.user.create({
     data: {
-      title: "My first note",
-      body: "Hello, world!",
-      userId: user.id,
+      email: "player2@modiphy.net",
+      name: "Marianne",
+      password: {
+        create: {
+          hash: hashedPassword,
+        },
+      },
     },
   });
 
-  await prisma.note.create({
+  const initialMovieId = "105"; // BTTF;
+
+  const game = await prisma.game.create({
     data: {
-      title: "My second note",
-      body: "Hello, world!",
-      userId: user.id,
+      player1Id: player1.id,
+      player2Id: player2.id,
+      currentTurnUserId: player2.id,
+    },
+  });
+
+  await prisma.turn.create({
+    data: {
+      gameId: game.id,
+      userId: player2.id,
+      movieId: initialMovieId,
     },
   });
 

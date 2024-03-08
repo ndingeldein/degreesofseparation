@@ -10,12 +10,76 @@ generator client {
 model User {
   id    String @id @default(cuid())
   email String @unique
+  name  String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   password Password?
   notes    Note[]
+
+  gamesAsPlayer1   Game[] @relation("Player1Games")
+  gamesAsPlayer2   Game[] @relation("Player2Games")
+  turns            Turn[]
+  currentTurnGames Game[] @relation("CurrentTurn")
+}
+
+model Game {
+  id                String      @id @default(cuid())
+  player1Id         String
+  player2Id         String
+  turns             Turn[]
+  status            GameStatus  @default(Pending)
+  result            GameResult?
+  forfeit           Boolean?
+  player1           User        @relation("Player1Games", fields: [player1Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  player2           User        @relation("Player2Games", fields: [player2Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  currentTurnUser   User?       @relation("CurrentTurn", fields: [currentTurnUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  currentTurnUserId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model Turn {
+  id        String     @id @default(cuid())
+  gameId    String
+  userId    String
+  movieId   String
+  guesses   Guess[]
+  status    TurnStatus @default(InProgress)
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Guess {
+  id        String   @id @default(cuid())
+  turnId    String
+  result    Boolean
+  movieId   String
+  turn      Turn     @relation(fields: [turnId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum GameStatus {
+  Pending
+  Ongoing
+  Completed
+}
+
+enum GameResult {
+  Player1Wins
+  Player2Wins
+  Draw
+  Canceled
+}
+
+enum TurnStatus {
+  InProgress
+  Success
+  Fail
 }
 
 model Password {
