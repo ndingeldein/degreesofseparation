@@ -11,5 +11,6 @@
     "itemClass",
     "itemClassName",
     "class:list"
-  ]
+  ],
+  "tailwindFunctions": ["tw", "clsx", "cn", "cva"]
 }

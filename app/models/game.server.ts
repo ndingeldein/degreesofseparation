@@ -25,6 +25,19 @@ export type { Game } from "@prisma/client";
 //   return titles;
 // }
 
+export async function searchMovies({ query }: { query: string }) {
+  const response = await fetch(
+    `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(
+      query,
+    )}&include_adult=false&language=en-US&page=1&api_key=${
+      process.env.TMDB_API_KEY
+    }`,
+  );
+
+  const data = await response.json();
+  return { results: data.results.slice(0, 5) };
+}
+
 export async function getGame({
   id,
 }: Pick<Game, "id"> & {
@@ -76,32 +89,3 @@ export function getPlayerGames({ userId }: { userId: User["id"] }) {
     orderBy: { updatedAt: "desc" },
   });
 }
-
-// export function createNote({
-//   body,
-//   title,
-//   userId,
-// }: Pick<Note, "body" | "title"> & {
-//   userId: User["id"];
-// }) {
-//   return prisma.note.create({
-//     data: {
-//       title,
-//       body,
-//       user: {
-//         connect: {
-//           id: userId,
-//         },
-//       },
-//     },
-//   });
-// }
-
-// export function deleteNote({
-//   id,
-//   userId,
-// }: Pick<Note, "id"> & { userId: User["id"] }) {
-//   return prisma.note.deleteMany({
-//     where: { id, userId },
-//   });
-// }

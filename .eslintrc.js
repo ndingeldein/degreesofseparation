@@ -88,6 +88,16 @@ module.exports = {
       },
     },
 
+    // shadcnfix
+    {
+      files: ["**/components/ui/*.tsx"],
+      rules: {
+        "react/prop-types": "off",
+        "react-refresh/only-export-components": "off",
+        "react/no-unknown-property": "off",
+      },
+    },
+
     // Markdown
     {
       files: ["**/*.md"],

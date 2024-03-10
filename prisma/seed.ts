@@ -17,6 +17,7 @@ async function seed() {
     data: {
       email: "player1@modiphy.net",
       name: "Neil",
+      role: "SuperAdmin",
       password: {
         create: {
           hash: hashedPassword,

@@ -2,7 +2,7 @@ import { Form, Link, Outlet } from "@remix-run/react";
 
 import { useUser } from "~/utils";
 
-export default function NotesPage() {
+export default function GamesPage() {
   const user = useUser();
 
   return (

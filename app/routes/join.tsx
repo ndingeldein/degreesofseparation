@@ -7,7 +7,11 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useSearchParams } from "@remix-run/react";
 import { useEffect, useRef } from "react";
 
-import { createUser, getUserByEmail } from "~/models/user.server";
+import {
+  createUser,
+  getUserByEmail,
+  getInvitedUser,
+} from "~/models/user.server";
 import { createUserSession, getUserId } from "~/session.server";
 import { safeRedirect, validateEmail } from "~/utils";
 
@@ -20,26 +24,64 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const email = formData.get("email");
+  const name = formData.get("name");
   const password = formData.get("password");
   const redirectTo = safeRedirect(formData.get("redirectTo"), "/");
 
   if (!validateEmail(email)) {
     return json(
-      { errors: { email: "Email is invalid", password: null } },
+      { errors: { email: "Email is invalid", name: null, password: null } },
+      { status: 400 },
+    );
+  }
+
+  // only allow invited users
+  const isInvitedUser = await getInvitedUser(email);
+  if (!isInvitedUser) {
+    return json(
+      {
+        errors: {
+          email: "Sorry, this email has no been invited",
+          name: null,
+          password: null,
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (typeof name !== "string" || name.length === 0) {
+    return json(
+      { errors: { email: null, name: "Password is required", password: "" } },
+      { status: 400 },
+    );
+  }
+
+  if (name.length > 20) {
+    return json(
+      {
+        errors: {
+          email: null,
+          name: null,
+          password: "Password should be less than 20 characters",
+        },
+      },
       { status: 400 },
     );
   }
 
   if (typeof password !== "string" || password.length === 0) {
     return json(
-      { errors: { email: null, password: "Password is required" } },
+      { errors: { email: null, name: null, password: "Password is required" } },
       { status: 400 },
     );
   }
 
   if (password.length < 8) {
     return json(
-      { errors: { email: null, password: "Password is too short" } },
+      {
+        errors: { email: null, name: null, password: "Password is too short" },
+      },
       { status: 400 },
     );
   }
@@ -50,6 +92,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       {
         errors: {
           email: "A user already exists with this email",
+          name: null,
           password: null,
         },
       },
@@ -57,7 +100,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 
-  const user = await createUser(email, password);
+  const user = await createUser(email, name, password);
 
   return createUserSession({
     redirectTo,
@@ -74,11 +117,14 @@ export default function Join() {
   const redirectTo = searchParams.get("redirectTo") ?? undefined;
   const actionData = useActionData<typeof action>();
   const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (actionData?.errors?.email) {
       emailRef.current?.focus();
+    } else if (actionData?.errors?.name) {
+      nameRef.current?.focus();
     } else if (actionData?.errors?.password) {
       passwordRef.current?.focus();
     }
@@ -89,10 +135,7 @@ export default function Join() {
       <div className="mx-auto w-full max-w-md px-8">
         <Form method="post" className="space-y-6">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="email" className="block text-sm font-medium ">
               Email address
             </label>
             <div className="mt-1">
@@ -107,7 +150,7 @@ export default function Join() {
                 autoComplete="email"
                 aria-invalid={actionData?.errors?.email ? true : undefined}
                 aria-describedby="email-error"
-                className="w-full rounded border border-gray-500 px-2 py-1 text-lg"
+                className="w-full rounded border border-gray-700 px-2 py-1 text-lg bg-black"
               />
               {actionData?.errors?.email ? (
                 <div className="pt-1 text-red-700" id="email-error">
@@ -118,22 +161,44 @@ export default function Join() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="name" className="block text-sm font-medium ">
+              Name
+            </label>
+            <div className="mt-1">
+              <input
+                ref={nameRef}
+                id="name"
+                required
+                name="name"
+                type="text"
+                autoComplete="name"
+                aria-invalid={actionData?.errors?.name ? true : undefined}
+                aria-describedby="name-error"
+                className="w-full rounded border border-gray-700 px-2 py-1 text-lg bg-black"
+              />
+              {actionData?.errors?.name ? (
+                <div className="pt-1 text-red-700" id="name-error">
+                  {actionData.errors.name}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium ">
               Password
             </label>
             <div className="mt-1">
               <input
                 id="password"
+                required
                 ref={passwordRef}
                 name="password"
                 type="password"
                 autoComplete="new-password"
                 aria-invalid={actionData?.errors?.password ? true : undefined}
                 aria-describedby="password-error"
-                className="w-full rounded border border-gray-500 px-2 py-1 text-lg"
+                className="w-full rounded border border-gray-700 bg-black px-2 py-1 text-lg"
               />
               {actionData?.errors?.password ? (
                 <div className="pt-1 text-red-700" id="password-error">
@@ -146,15 +211,15 @@ export default function Join() {
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <button
             type="submit"
-            className="w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
+            className="w-full rounded bg-success-600 px-4 py-2 text-white hover:bg-success-500 focus:bg-success-500"
           >
             Create Account
           </button>
           <div className="flex items-center justify-center">
-            <div className="text-center text-sm text-gray-500">
+            <div className="text-center text-sm">
               Already have an account?{" "}
               <Link
-                className="text-blue-500 underline"
+                className="text-success-400 underline font-semibold"
                 to={{
                   pathname: "/login",
                   search: searchParams.toString(),

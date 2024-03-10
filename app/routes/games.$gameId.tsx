@@ -10,6 +10,7 @@ import invariant from "tiny-invariant";
 import { GuessBox } from "~/components/GuessBox";
 import { getGame } from "~/models/game.server";
 import { requireUserId } from "~/session.server";
+import { useUser } from "~/utils";
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
@@ -37,11 +38,10 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
 // };
 
 export default function GamePage() {
-  // const user = useUser();
+  const user = useUser();
   const { game, movie } = useLoaderData<typeof loader>();
 
-  const currentTurnUser =
-    game.currentTurnUserId === game.player2.id ? game.player2 : game.player1;
+  const isUsersTurn = game.currentTurnUserId === user.id;
 
   return (
     <div className="w-full flex items-center justify-center">
@@ -58,8 +58,8 @@ export default function GamePage() {
           </div>
         </div>
         <div>
-          <div className="flex justify-center mt-4">
-            <GuessBox />
+          <div className="flex mt-4 w-full">
+            {isUsersTurn ? <GuessBox /> : null}
           </div>
           <div className="space-y-12 flex flex-col justify-center items-center pt-12">
             <div className="rounded-xl px-8 py-4 bg-gray-700 flex flex-col text-center justify-center items-center shadow-lg">
