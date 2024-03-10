@@ -58,7 +58,7 @@ export async function getGame({
     where: { id },
   });
 
-  const movieId = game.turns[0].movieId;
+  const movieId = game?.turns[0].movieId;
   //const movieId = "105";
   const url = `https://api.themoviedb.org/3/movie/${movieId}?language=en-US`;
   const options = {
