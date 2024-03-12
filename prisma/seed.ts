@@ -3,11 +3,6 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-interface CastMember {
-  id: string;
-  name: string;
-}
-
 async function seed() {
   // cleanup the existing database
   await prisma.user
