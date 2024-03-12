@@ -156,7 +156,7 @@ export default function GamePage() {
           <div className="flex mt-4 w-full justify-center">
             {game.status === "Completed" ? (
               <div className="bg-success-600 text-white rounded px-4 py-2">
-                {game.result === "Player1Wins" &&
+                {game.result === "Player1Wins"
                   ? `${game.player1.name} Wins!`
                   : `${game.player2.name} Wins!`}
               </div>
@@ -195,10 +195,7 @@ export default function GamePage() {
               </div>
             )}
           </div>
-          <Turns
-            turns={game.turns as Turn[]}
-            currentTurn={currentTurn as Turn}
-          />
+          <Turns turns={game.turns as Turn[]} />
         </div>
       </div>
     </div>
@@ -229,7 +226,7 @@ function CommonCast({ cast }: { cast: CastMember[] }) {
   );
 }
 
-function Turns({ turns, currentTurn }: { turns: Turn[]; currentTurn: Turn }) {
+function Turns({ turns }: { turns: Turn[] }) {
   return (
     <div className="space-y-6 flex flex-col justify-center items-center pt-12">
       {turns.map((turn, index) => (

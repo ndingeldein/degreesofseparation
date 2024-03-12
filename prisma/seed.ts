@@ -53,10 +53,14 @@ async function seed() {
     },
   });
 
-  const response = await fetch(
-    `https://api.themoviedb.org/3/movie/${initialMovieId}/credits?api_key=${process.env.TMDB_API_KEY}`,
-  );
-  const { cast } = await response.json();
+  const castIds = [
+    521, 1062, 1064, 1063, 1066, 1065, 1067, 1068, 1069, 1070, 1954, 11673,
+    1953, 1072, 1074, 84494, 97708, 1116544, 172280, 97718, 129319, 184030,
+    1200788, 94500, 139044, 18708, 238572, 1020340, 21065, 158713, 7139, 99725,
+    77874, 160343, 3038, 175060, 54564, 1200791, 1200792, 1200793, 1200794,
+    964124, 1200796, 180468, 1212833, 9971, 168702, 2749693, 2749694, 1261,
+    100600, 1208039, 2749695, 1200797, 2333453, 553735, 1884036,
+  ];
 
   await prisma.turn.create({
     data: {
@@ -65,7 +69,7 @@ async function seed() {
       movieId: initialMovieId,
       movieTitle: "Back to the Future",
       movieYear: 1985,
-      castIds: cast.map((c: CastMember) => c.id),
+      castIds: castIds,
     },
   });
 
