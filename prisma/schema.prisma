@@ -42,26 +42,32 @@ model Game {
 }
 
 model Turn {
-  id        String     @id @default(cuid())
-  gameId    String
-  userId    String
-  movieId   String
-  guesses   Guess[]
-  status    TurnStatus @default(InProgress)
-  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String     @id @default(cuid())
+  gameId     String
+  userId     String
+  movieId    String
+  movieTitle String
+  movieYear  Int
+  castIds    Int[]
+  commonCast Json?
+  guesses    Guess[]
+  status     TurnStatus @default(InProgress)
+  game       Game       @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Guess {
-  id        String   @id @default(cuid())
-  turnId    String
-  result    Boolean
-  movieId   String
-  turn      Turn     @relation(fields: [turnId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  turnId     String
+  result     Boolean
+  movieId    String
+  movieTitle String
+  movieYear  Int
+  turn       Turn     @relation(fields: [turnId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 enum UserRole {

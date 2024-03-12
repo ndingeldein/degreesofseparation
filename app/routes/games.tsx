@@ -26,20 +26,21 @@ export default function GamesPage() {
         </div>
       </header>
 
-      <main className="flex font-medium grow">
+      <main className="flex font-medium grow pb-12">
         <div className="w-full">
           <Outlet />
         </div>
       </main>
-      <footer className="text-xs text-gray-400 px-6 py-2">
-        <div className="justify-end italic flex items-baseline space-x-2">
-          <p>
-            This product uses the TMDB API but is not endorsed or certified by
-          </p>
-          <a href="https://www.themoviedb.org/">
-            <img src="/tmdb.svg" alt="TMDB" className="w-auto h-3 grayscale" />
-          </a>
-          .
+      <footer className="text-xs text-gray-400 px-6 py-2 text-center">
+        <div className="italic">
+          <span className="inline-flex mr-1 leading-6 items-center">
+            This product uses the TMDB API but is not endorsed or certified by{" "}
+            <img
+              src="/tmdb.svg"
+              alt="TMDB"
+              className="w-auto h-3 grayscale inline-flex ml-1 -mt-0.5"
+            />
+          </span>
         </div>
       </footer>
     </div>

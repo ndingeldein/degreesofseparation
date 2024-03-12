@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+interface CastMember {
+  id: string;
+  name: string;
+}
+
 async function seed() {
   // cleanup the existing database
   await prisma.user
@@ -48,11 +53,19 @@ async function seed() {
     },
   });
 
+  const response = await fetch(
+    `https://api.themoviedb.org/3/movie/${initialMovieId}/credits?api_key=${process.env.TMDB_API_KEY}`,
+  );
+  const { cast } = await response.json();
+
   await prisma.turn.create({
     data: {
       gameId: game.id,
       userId: player2.id,
       movieId: initialMovieId,
+      movieTitle: "Back to the Future",
+      movieYear: 1985,
+      castIds: cast.map((c: CastMember) => c.id),
     },
   });
 
