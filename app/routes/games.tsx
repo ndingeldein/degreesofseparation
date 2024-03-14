@@ -15,6 +15,18 @@ export default function GamesPage() {
         </h1>
         <div className="flex justify-end">
           <p className="mr-4">{user.name}</p>
+          <Form
+            action={`/games/new`}
+            method="post"
+            className="text-center flex justify-center"
+          >
+            <button
+              type="submit"
+              className="hover:text-white hover:underline font-medium mr-4"
+            >
+              <span>New Game</span>
+            </button>
+          </Form>
           <Form action="/logout" method="post">
             <button
               type="submit"

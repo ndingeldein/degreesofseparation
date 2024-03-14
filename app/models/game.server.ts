@@ -51,6 +51,26 @@ interface CastMember {
 //   return titles;
 // }
 
+export async function getNewMovie() {
+  const response = await fetch(
+    `https://api.themoviedb.org/3/movie/top_rated?language=en-US&page=1&region=US&api_key=${process.env.TMDB_API_KEY}`,
+  );
+
+  const data = await response.json();
+
+  // get random movie from top rated
+  const { id, title, release_date } =
+    data.results[Math.floor(Math.random() * data.results.length)];
+
+  return {
+    newMovie: {
+      id,
+      title,
+      release_date,
+    },
+  };
+}
+
 export async function createGame({
   userId,
   movieId,
