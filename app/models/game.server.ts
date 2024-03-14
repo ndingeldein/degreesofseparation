@@ -51,7 +51,58 @@ interface CastMember {
 //   return titles;
 // }
 
-async function fetchMovieCredits(movieId: string) {
+export async function createGame({
+  userId,
+  movieId,
+  movieTitle,
+  movieYear,
+}: {
+  userId: User["id"];
+  movieId: number;
+  movieTitle: string;
+  movieYear: number;
+}) {
+  const player2 = await prisma.user.findFirst({
+    where: {
+      id: {
+        not: userId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  invariant(player2, "player2 not found");
+
+  const game = await prisma.game.create({
+    data: {
+      player1Id: userId,
+      player2Id: player2.id,
+      currentTurnUserId: player2.id,
+    },
+  });
+
+  const cast = await fetchMovieCredits(movieId);
+
+  await prisma.turn.create({
+    data: {
+      gameId: game.id,
+      userId: player2.id,
+      movieId: movieId,
+      movieTitle: movieTitle,
+      movieYear: movieYear,
+      castIds: cast.map((c: CastMember) => c.id),
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return game;
+}
+
+async function fetchMovieCredits(movieId: number) {
   const response = await fetch(
     `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${process.env.TMDB_API_KEY}`,
   );
@@ -61,7 +112,7 @@ async function fetchMovieCredits(movieId: string) {
 
 export async function findMovieCastConnection(
   castAIds: number[],
-  movieB: string,
+  movieB: number,
 ) {
   const castB = await fetchMovieCredits(movieB);
 
@@ -126,6 +177,7 @@ export function getPlayerGames({ userId }: { userId: User["id"] }) {
       player1: true,
       player2: true,
       status: true,
+      result: true,
       currentTurnUserId: true,
     },
     orderBy: { updatedAt: "desc" },
@@ -158,13 +210,27 @@ export async function createGuess({
   userId: User["id"];
   player1Id: User["id"];
   player2Id: User["id"];
-  guessMovieId: string;
+  guessMovieId: number;
   guessMovieTitle: string;
   guessMovieYear: number;
   turnId: string;
-  turnMovieId: string;
+  turnMovieId: number;
 }) {
   console.log(`checking guess: ${turnMovieId} ${guessMovieId}`);
+
+  // *** MOVED to guess box. should never happen
+  // check if the movie has been used on a previous turn
+  // const existingGuess = await prisma.turn.findFirst({
+  //   where: {
+  //     movieId: guessMovieId,
+  //     status: TurnStatus.Success,
+  //   },
+  // });
+
+  // if (existingGuess) {
+  //   // const message = encodeURIComponent("Movie already used before");
+  //   return redirect(`/games`);
+  // }
 
   const currentTurn = await getTurn(turnId);
 
@@ -175,6 +241,7 @@ export async function createGuess({
   const commonCast = await findMovieCastConnection(turnCastIds, guessMovieId);
 
   const result = commonCast.length > 0 ? true : false;
+
   console.log(`guess result: ${result}`);
 
   await prisma.guess.create({
@@ -215,10 +282,7 @@ export async function createGuess({
     );
     const { title, release_date } = await nextMovieResponse.json();
 
-    const castResponse = await fetch(
-      `https://api.themoviedb.org/3/movie/${guessMovieId}/credits?api_key=${process.env.TMDB_API_KEY}`,
-    );
-    const { cast } = await castResponse.json();
+    const cast = await fetchMovieCredits(guessMovieId);
 
     const nextUserId = userId === player1Id ? player2Id : player1Id;
 

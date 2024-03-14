@@ -45,7 +45,7 @@ model Turn {
   id         String     @id @default(cuid())
   gameId     String
   userId     String
-  movieId    String
+  movieId    Int
   movieTitle String
   movieYear  Int
   castIds    Int[]
@@ -62,7 +62,7 @@ model Guess {
   id         String   @id @default(cuid())
   turnId     String
   result     Boolean
-  movieId    String
+  movieId    Int
   movieTitle String
   movieYear  Int
   turn       Turn     @relation(fields: [turnId], references: [id], onDelete: Cascade, onUpdate: Cascade)

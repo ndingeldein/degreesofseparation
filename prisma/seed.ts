@@ -38,13 +38,21 @@ async function seed() {
     },
   });
 
-  const initialMovieId = "105"; // BTTF;
+  const initialMovieId = 105; // BTTF;
 
   const game = await prisma.game.create({
     data: {
       player1Id: player1.id,
       player2Id: player2.id,
       currentTurnUserId: player2.id,
+    },
+  });
+
+  const game2 = await prisma.game.create({
+    data: {
+      player1Id: player1.id,
+      player2Id: player2.id,
+      currentTurnUserId: player1.id,
     },
   });
 
@@ -61,6 +69,17 @@ async function seed() {
     data: {
       gameId: game.id,
       userId: player2.id,
+      movieId: initialMovieId,
+      movieTitle: "Back to the Future",
+      movieYear: 1985,
+      castIds: castIds,
+    },
+  });
+
+  await prisma.turn.create({
+    data: {
+      gameId: game2.id,
+      userId: player1.id,
       movieId: initialMovieId,
       movieTitle: "Back to the Future",
       movieYear: 1985,

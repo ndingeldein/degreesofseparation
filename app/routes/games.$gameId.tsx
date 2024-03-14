@@ -1,12 +1,14 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import {
+  Form,
   isRouteErrorResponse,
   useFetcher,
   useLoaderData,
   useRouteError,
 } from "@remix-run/react";
 import debounce from "lodash.debounce";
+import { toast } from "sonner";
 import invariant from "tiny-invariant";
 
 import { createGuess, getGame } from "~/models/game.server";
@@ -21,14 +23,14 @@ import { useUser } from "~/utils";
 // }
 
 interface ApiMovie {
-  id: string;
+  id: number;
   title: string;
   release_date: string;
 }
 
 interface Guess {
   id: string;
-  movieId: string;
+  movieId: number;
   movieTitle: string;
   movieYear: number;
   result: boolean;
@@ -36,7 +38,7 @@ interface Guess {
 
 interface Turn {
   id: string;
-  movieId: string;
+  movieId: number;
   movieTitle: string;
   movieYear: number;
   guesses: Guess[];
@@ -58,10 +60,10 @@ export const action = async ({ params, request }: ActionFunctionArgs) => {
   const gameId = String(formData.get("gameId"));
   const player1Id = String(formData.get("player1Id"));
   const player2Id = String(formData.get("player2Id"));
-  const guessMovieId = String(formData.get("guessMovieId"));
+  const guessMovieId = Number(formData.get("guessMovieId"));
   const guessMovieTitle = String(formData.get("guessMovieTitle"));
   const guessMovieYear = Number(formData.get("guessMovieYear"));
-  const turnMovieId = String(formData.get("turnMovieId"));
+  const turnMovieId = Number(formData.get("turnMovieId"));
   const turnId = String(formData.get("turnId"));
 
   invariant(userId, "userId not found");
@@ -93,29 +95,20 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const userId = await requireUserId(request);
   invariant(params.gameId, "gameId not found");
 
+  const url = new URL(request.url);
+  const message = url.searchParams.get("message");
+
   const { game } = await getGame({ id: params.gameId, userId });
   if (!game) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  return json({ game });
+  return json({ game, message });
 };
-
-const fetchMovies = debounce((query, fetcher) => {
-  query &&
-    query.length > 1 &&
-    fetcher.submit(
-      { query: query },
-      {
-        method: "get",
-        action: "/movies-search",
-      },
-    );
-}, 300);
 
 export default function GamePage() {
   const user = useUser();
-  const { game } = useLoaderData<typeof loader>();
+  const { game, message } = useLoaderData<typeof loader>();
 
   // current turn is most recently created turn
   const currentTurn: Turn = game.turns[0] as Turn;
@@ -134,9 +127,7 @@ export default function GamePage() {
   const isUsersTurn = game.currentTurnUserId === user.id;
 
   const isGuessing =
-    guessFetcher.state === "submitting" ||
-    guessFetcher.state === "loading" ||
-    currentTurn.status !== "InProgress";
+    guessFetcher.state !== "idle" || currentTurn.status !== "InProgress";
 
   return (
     <div className="w-full flex items-center justify-center">
@@ -153,12 +144,26 @@ export default function GamePage() {
           </div>
         </div>
         <div>
-          <div className="flex mt-4 w-full justify-center">
+          <div className="flex mt-4 w-full justify-center text-center">
             {game.status === "Completed" ? (
-              <div className="bg-success-600 text-white rounded px-4 py-2">
-                {game.result === "Player1Wins"
-                  ? `${game.player1.name} Wins!`
-                  : `${game.player2.name} Wins!`}
+              <div className="text-center">
+                <span className="text-success-400 font-semibold">
+                  {game.result === "Player1Wins"
+                    ? `${game.player1.name} Wins!`
+                    : `${game.player2.name} Wins!`}
+                </span>
+                <Form
+                  action={`/games/${game.id}/rematch`}
+                  method="post"
+                  className="text-center flex justify-center"
+                >
+                  <button
+                    type="submit"
+                    className="mt-2 bg-success-600 text-white rounded px-4 py-2 flex flex-col items-center justify-center hover:bg-success-500"
+                  >
+                    <span>Rematch</span>
+                  </button>
+                </Form>
               </div>
             ) : isUsersTurn ? (
               <div
@@ -171,7 +176,18 @@ export default function GamePage() {
                     fetchMovies(currentValue, moviesFetcher);
                   }}
                   handleOnSelect={(movie: ApiMovie) => {
-                    if (user.id !== game.currentTurnUserId) return;
+                    if (user.id !== game.currentTurnUserId) {
+                      toast.warning("It's not your turn to guess.");
+                      return;
+                    }
+
+                    if (
+                      checkIfGuessHasBeenUsed(game.turns as Turn[], movie.id)
+                    ) {
+                      toast.warning(`${movie.title} has already been used.`);
+                      return;
+                    }
+
                     const params = {
                       gameId: game.id,
                       player1Id: game.player1.id,
@@ -188,6 +204,7 @@ export default function GamePage() {
                     guessFetcher.submit(params, { method: "POST" });
                   }}
                 />
+                {message ? <p>{message}</p> : null}
               </div>
             ) : (
               <div className="bg-black rounded px-4 py-2">
@@ -203,9 +220,11 @@ export default function GamePage() {
 }
 
 function CommonCast({ cast }: { cast: CastMember[] }) {
+  // maximum number of names to display
+  const maxNames = 5;
   return (
     <ul className="text-center w-[250px] max-w-full mx-auto space-y-1 mb-6">
-      {cast.slice(0, 3).map((castMember: CastMember) => (
+      {cast.slice(0, maxNames).map((castMember: CastMember) => (
         <li
           key={castMember.id}
           className="bg-success-600 shadow-md px-2 py-1 rounded border border-transparent"
@@ -215,10 +234,10 @@ function CommonCast({ cast }: { cast: CastMember[] }) {
           </p>
         </li>
       ))}
-      {cast.length > 3 ? (
+      {cast.length > 5 ? (
         <li className="border border-success-600/70 shadow-md px-2 py-1 rounded">
           <p className="text-gray-100 mr-3 line-clamp-1 text-xs text-center">
-            +{cast.length - 3} more
+            +{cast.length - maxNames} more
           </p>
         </li>
       ) : null}
@@ -285,3 +304,22 @@ export function ErrorBoundary() {
 
   return <div>An unexpected error occurred: {error.statusText}</div>;
 }
+
+function checkIfGuessHasBeenUsed(turns: Turn[], movieId: number) {
+  return turns.some((turn: Turn) => {
+    return turn.movieId == movieId;
+  });
+  return false;
+}
+
+const fetchMovies = debounce((query, fetcher) => {
+  query &&
+    query.length > 1 &&
+    fetcher.submit(
+      { query: query },
+      {
+        method: "get",
+        action: "/movies-search",
+      },
+    );
+}, 300);

@@ -42,7 +42,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 // }
 
 interface ApiMovie {
-  id: string;
+  id: number;
   title: string;
   release_date: string;
 }
@@ -59,7 +59,7 @@ function GuessBox({
   handleOnSelect: (movie: ApiMovie) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [value] = useState("");
+  // const [value] = useState("");
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -82,10 +82,7 @@ function GuessBox({
           aria-expanded={open}
           className="w-[400px] justify-between mx-auto"
         >
-          {value
-            ? movies.find((movie: ApiMovie) => movie.id === value)?.title
-            : "Select a movie..."}
-
+          Select a movie...
           <span className="flex items-center space-x-1">
             <span className="px-1 py-0.5 rounded bg-gray-700 text-xs">⌘ K</span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -107,7 +104,7 @@ function GuessBox({
             {movies.map((movie: ApiMovie) => (
               <CommandItem
                 key={movie.id}
-                value={movie.id}
+                value={String(movie.id)}
                 onSelect={() => {
                   if (isGuessing) return;
                   // const newValue = movie.id === value ? "" : movie;
