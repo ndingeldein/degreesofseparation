@@ -1,74 +1,32 @@
-import type { User, Game, Prisma } from "@prisma/client";
-import { redirect } from "@remix-run/node";
-import invariant from "tiny-invariant";
+import type { User, Game, Prisma } from "@prisma/client"
+import invariant from "tiny-invariant"
 
-import { prisma } from "~/db.server";
+import { prisma } from "~/db.server"
+import type { CastMember } from "~/models/schema"
+import {
+  ApiMovieSchema,
+  ApiMoviesSchema,
+  CastMembersSchema,
+  GameResultSchema,
+  GameStatusSchema,
+  TurnStatusSchema,
+} from "~/models/schema"
 
-export type { Game } from "@prisma/client";
-
-enum GameStatus {
-  Pending = "Pending",
-  Ongoing = "Ongoing",
-  Completed = "Completed",
-}
-
-enum GameResult {
-  Player1Wins = "Player1Wins",
-  Player2Wins = "Player2Wins",
-  Draw = "Draw",
-  Canceled = "Canceled",
-}
-
-enum TurnStatus {
-  InProgress = "InProgress",
-  Success = "Success",
-  Fail = "Fail",
-}
-
-interface CastMember {
-  id: number;
-  name: string;
-}
-
-// Utility function to fetch movie titles by ID
-// async function fetchMovieTitles(
-//   movieIds: string[],
-// ): Promise<Record<string, string>> {
-//   const titles: Record<string, string> = {};
-//   const uniqueIds = [...new Set(movieIds)]; // Remove duplicates
-
-//   await Promise.all(
-//     uniqueIds.map(async (id: string) => {
-//       const response = await fetch(
-//         `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}`,
-//       );
-//       const { title } = await response.json();
-
-//       titles[id] = title;
-//     }),
-//   );
-
-//   return titles;
-// }
+export type { Game } from "@prisma/client"
 
 export async function getNewMovie() {
   const response = await fetch(
     `https://api.themoviedb.org/3/movie/top_rated?language=en-US&page=1&region=US&api_key=${process.env.TMDB_API_KEY}`,
-  );
+  )
 
-  const data = await response.json();
+  const data = await response.json()
 
   // get random movie from top rated
-  const { id, title, release_date } =
-    data.results[Math.floor(Math.random() * data.results.length)];
+  const newMovie = ApiMovieSchema.parse(
+    data.results[Math.floor(Math.random() * data.results.length)],
+  )
 
-  return {
-    newMovie: {
-      id,
-      title,
-      release_date,
-    },
-  };
+  return { newMovie }
 }
 
 export async function createGame({
@@ -77,10 +35,10 @@ export async function createGame({
   movieTitle,
   movieYear,
 }: {
-  userId: User["id"];
-  movieId: number;
-  movieTitle: string;
-  movieYear: number;
+  userId: User["id"]
+  movieId: number
+  movieTitle: string
+  movieYear: number
 }) {
   const player2 = await prisma.user.findFirst({
     where: {
@@ -91,9 +49,9 @@ export async function createGame({
     select: {
       id: true,
     },
-  });
+  })
 
-  invariant(player2, "player2 not found");
+  invariant(player2, "player2 not found")
 
   const game = await prisma.game.create({
     data: {
@@ -101,9 +59,9 @@ export async function createGame({
       player2Id: player2.id,
       currentTurnUserId: player2.id,
     },
-  });
+  })
 
-  const cast = await fetchMovieCredits(movieId);
+  const cast = await fetchMovieCredits(movieId)
 
   await prisma.turn.create({
     data: {
@@ -117,36 +75,35 @@ export async function createGame({
     select: {
       id: true,
     },
-  });
+  })
 
-  return game;
+  return game
 }
 
 async function fetchMovieCredits(movieId: number) {
   const response = await fetch(
     `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${process.env.TMDB_API_KEY}`,
-  );
-  const { cast } = await response.json();
-  return cast;
+  )
+  const data = await response.json()
+
+  const cast = CastMembersSchema.parse(data.cast)
+
+  return cast
 }
 
 export async function findMovieCastConnection(
   castAIds: number[],
   movieB: number,
 ) {
-  const castB = await fetchMovieCredits(movieB);
+  const castB = await fetchMovieCredits(movieB)
 
-  // find matching cast ids and map to cast member objects of only id and name
+  // find matching cast ids
+  // CastMember are mapped automatically with Zod schema
   const commonCast = castB.filter((member: CastMember) =>
     castAIds.includes(member.id),
-  );
+  )
 
-  const commonCastOnlyNamesAndIds = commonCast.map((member: CastMember) => ({
-    id: member.id,
-    name: member.name,
-  }));
-
-  return commonCastOnlyNamesAndIds;
+  return commonCast
 }
 
 export async function searchMovies({ query }: { query: string }) {
@@ -156,16 +113,16 @@ export async function searchMovies({ query }: { query: string }) {
     )}&include_adult=false&language=en-US&page=1&api_key=${
       process.env.TMDB_API_KEY
     }`,
-  );
+  )
 
-  const data = await response.json();
-  return { results: data.results.slice(0, 5) };
+  const data = await response.json()
+  return { results: ApiMoviesSchema.parse(data.results.slice(0, 5)) }
 }
 
 export async function getGame({
   id,
 }: Pick<Game, "id"> & {
-  userId: User["id"];
+  userId: User["id"]
 }) {
   const game = await prisma.game.findFirst({
     include: {
@@ -181,12 +138,12 @@ export async function getGame({
       },
     },
     where: { id: id as string },
-  });
+  })
 
-  invariant(game, "game not found");
-  invariant(game.turns, "no game turns found");
+  invariant(game, "game not found")
+  invariant(game.turns, "no game turns found")
 
-  return { game };
+  return { game }
 }
 
 export function getPlayerGames({ userId }: { userId: User["id"] }) {
@@ -201,7 +158,7 @@ export function getPlayerGames({ userId }: { userId: User["id"] }) {
       currentTurnUserId: true,
     },
     orderBy: { updatedAt: "desc" },
-  });
+  })
 }
 
 async function getTurn(turnId: string) {
@@ -210,9 +167,101 @@ async function getTurn(turnId: string) {
     where: {
       id: turnId,
     },
-  });
-  invariant(turn, "turn not found");
-  return turn;
+  })
+  invariant(turn, "turn not found")
+  return turn
+}
+
+async function createNextTurn({
+  commonCast,
+  gameId,
+  userId,
+  player1Id,
+  player2Id,
+  turnId,
+  guessMovieId,
+}: {
+  commonCast: CastMember[]
+  gameId: string
+  userId: string
+  player1Id: string
+  player2Id: string
+  turnId: string
+  guessMovieId: number
+}) {
+  const commonCastAsJson = commonCast as Prisma.JsonArray
+
+  // console.log("common actors")
+  // console.log(commonCast)
+
+  // previous turn was a success
+  await prisma.turn.update({
+    where: {
+      id: turnId,
+    },
+    data: {
+      status: TurnStatusSchema.enum.Success,
+      commonCast: commonCastAsJson,
+    },
+  })
+
+  // create new turn
+
+  // get next movie title and year
+  const nextMovieResponse = await fetch(
+    `https://api.themoviedb.org/3/movie/${guessMovieId}?api_key=${process.env.TMDB_API_KEY}`,
+  )
+  const { title, release_date } = await nextMovieResponse.json()
+
+  const cast = await fetchMovieCredits(guessMovieId)
+
+  const nextUserId = userId === player1Id ? player2Id : player1Id
+
+  await prisma.turn.create({
+    data: {
+      gameId: gameId,
+      userId: nextUserId,
+      movieId: guessMovieId,
+      movieTitle: title,
+      movieYear: new Date(release_date).getFullYear(),
+      castIds: cast.map((c: CastMember) => c.id),
+    },
+  })
+
+  await prisma.game.update({
+    where: {
+      id: gameId,
+    },
+    data: {
+      currentTurnUserId: nextUserId,
+      status: GameStatusSchema.enum.Ongoing,
+    },
+  })
+}
+
+async function endGame({
+  gameId,
+  player1Id,
+  userId,
+}: {
+  gameId: string
+  player1Id: string
+  userId: string
+}) {
+  const result =
+    userId === player1Id
+      ? GameResultSchema.enum.Player2Wins
+      : GameResultSchema.enum.Player1Wins
+
+  await prisma.game.update({
+    where: {
+      id: gameId,
+    },
+    data: {
+      status: GameStatusSchema.enum.Completed,
+      result: result,
+    },
+  })
 }
 
 export async function createGuess({
@@ -226,43 +275,79 @@ export async function createGuess({
   turnId,
   turnMovieId,
 }: {
-  gameId: Game["id"];
-  userId: User["id"];
-  player1Id: User["id"];
-  player2Id: User["id"];
-  guessMovieId: number;
-  guessMovieTitle: string;
-  guessMovieYear: number;
-  turnId: string;
-  turnMovieId: number;
+  gameId: Game["id"]
+  userId: User["id"]
+  player1Id: User["id"]
+  player2Id: User["id"]
+  guessMovieId: number
+  guessMovieTitle: string
+  guessMovieYear: number
+  turnId: string
+  turnMovieId: number
 }) {
-  console.log(`checking guess: ${turnMovieId} ${guessMovieId}`);
+  // console.log(`checking guess: ${turnMovieId} ${guessMovieId}`)
 
-  // *** MOVED to guess box. should never happen
-  // check if the movie has been used on a previous turn
-  // const existingGuess = await prisma.turn.findFirst({
-  //   where: {
-  //     movieId: guessMovieId,
-  //     status: TurnStatus.Success,
-  //   },
-  // });
+  if (turnMovieId === guessMovieId) {
+    return
+  }
 
-  // if (existingGuess) {
-  //   // const message = encodeURIComponent("Movie already used before");
-  //   return redirect(`/games`);
-  // }
+  const currentTurn = await getTurn(turnId)
 
-  const currentTurn = await getTurn(turnId);
+  const turnCastIds = currentTurn.castIds
 
-  const turnCastIds = currentTurn.castIds;
+  const totalGuesses = currentTurn.guesses.length
 
-  const totalGuesses = currentTurn.guesses.length;
+  // check if guess has any connections
+  const commonCast = await findMovieCastConnection(turnCastIds, guessMovieId)
 
-  const commonCast = await findMovieCastConnection(turnCastIds, guessMovieId);
+  let notification = null
 
-  const result = commonCast.length > 0 ? true : false;
+  //
+  if (commonCast.length > 0) {
+    // check if commonCast includes castMember.id from previous turns commonCast
+    const previousTurns = await prisma.turn.findMany({
+      where: {
+        gameId: gameId,
+        status: TurnStatusSchema.enum.Success,
+      },
+      select: {
+        commonCast: true,
+      },
+    })
 
-  console.log(`guess result: ${result}`);
+    const castMemberCounts = new Map()
+    const previousTurnCommonCasts = previousTurns
+      .filter((previousTurn) => previousTurn.commonCast !== null)
+      .map((previousTurn) => CastMembersSchema.parse(previousTurn.commonCast))
+
+    previousTurnCommonCasts.forEach((cast) => {
+      cast.forEach((castMember: CastMember) => {
+        const currentCount = castMemberCounts.get(castMember.id) || 0
+        castMemberCounts.set(castMember.id, currentCount + 1)
+      })
+    })
+
+    const isCastMemberOverused = commonCast.some((castMember) => {
+      const appearances = castMemberCounts.get(castMember.id) || 0
+      return appearances >= 3
+    })
+
+    if (isCastMemberOverused) {
+      notification = "Actor has already been used three times!"
+      // console.log(`notification: ${notification}`)
+
+      await prisma.notification.create({
+        data: {
+          userId: userId,
+          message: notification,
+        },
+      })
+      return
+    }
+  }
+
+  const result = commonCast.length > 0 ? true : false
+  // console.log(`guess result: ${result}`)
 
   await prisma.guess.create({
     data: {
@@ -276,82 +361,32 @@ export async function createGuess({
       movieYear: guessMovieYear,
       result: result,
     },
-  });
+  })
 
   if (result) {
-    const commonCastAsJson = commonCast as Prisma.JsonArray;
-
-    console.log("common actors");
-    console.log(commonCast);
-
-    await prisma.turn.update({
-      where: {
-        id: turnId,
-      },
-      data: {
-        status: TurnStatus.Success,
-        commonCast: commonCastAsJson,
-      },
-    });
-
-    // create new turn
-
-    // get next movie title and year
-    const nextMovieResponse = await fetch(
-      `https://api.themoviedb.org/3/movie/${guessMovieId}?api_key=${process.env.TMDB_API_KEY}`,
-    );
-    const { title, release_date } = await nextMovieResponse.json();
-
-    const cast = await fetchMovieCredits(guessMovieId);
-
-    const nextUserId = userId === player1Id ? player2Id : player1Id;
-
-    await prisma.turn.create({
-      data: {
-        gameId: gameId,
-        userId: nextUserId,
-        movieId: guessMovieId,
-        movieTitle: title,
-        movieYear: new Date(release_date).getFullYear(),
-        castIds: cast.map((c: CastMember) => c.id),
-      },
-    });
-
-    await prisma.game.update({
-      where: {
-        id: gameId,
-      },
-      data: {
-        currentTurnUserId: nextUserId,
-        status: GameStatus.Ongoing,
-      },
-    });
+    await createNextTurn({
+      commonCast,
+      gameId,
+      userId,
+      player1Id,
+      player2Id,
+      turnId,
+      guessMovieId,
+    })
   } else if (totalGuesses >= 2) {
+    // mark turn as failed
     await prisma.turn.update({
       where: {
         id: turnId,
       },
       data: {
-        status: TurnStatus.Fail,
+        status: TurnStatusSchema.enum.Fail,
       },
-    });
+    })
 
     // end game
-    await prisma.game.update({
-      where: {
-        id: gameId,
-      },
-      data: {
-        result:
-          userId === player1Id
-            ? GameResult.Player2Wins
-            : GameResult.Player1Wins,
-        status: GameStatus.Completed,
-      },
-    });
+    endGame({ gameId, player1Id, userId })
   }
-
-  return redirect(`/games/${gameId}`);
 }
 
 // export async function createTurn() {}

@@ -1,6 +1,6 @@
-import { cssBundleHref } from "@remix-run/css-bundle";
-import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { cssBundleHref } from "@remix-run/css-bundle"
+import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node"
+import { json } from "@remix-run/node"
 import {
   Links,
   LiveReload,
@@ -8,31 +8,31 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "@remix-run/react";
+} from "@remix-run/react"
 
-import { Toaster } from "~/components/ui/sonner";
-import { getUser } from "~/session.server";
-import stylesheet from "~/tailwind.css";
+import { Toaster } from "~/components/ui/sonner"
+import { getUser } from "~/session.server"
+import stylesheet from "~/tailwind.css"
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
-];
+]
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  return json({ user: await getUser(request) });
-};
+  return json({ user: await getUser(request) })
+}
 
 export default function App() {
   return (
-    <html lang="en" className="h-full dark">
+    <html lang="en" className="dark h-full">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body className="font-sans text-gray-300 antialiased bg-gray-900">
+      <body className="bg-gray-900 font-sans text-gray-300 antialiased">
         <Outlet />
         <Toaster position="top-center" richColors />
         <ScrollRestoration />
@@ -40,5 +40,5 @@ export default function App() {
         <LiveReload />
       </body>
     </html>
-  );
+  )
 }

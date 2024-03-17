@@ -1,9 +1,13 @@
-import { useMatches } from "@remix-run/react";
-import { useMemo } from "react";
+import { useMatches } from "@remix-run/react"
+import { useMemo } from "react"
 
-import type { User } from "~/models/user.server";
+import type { User, Notification } from "~/models/user.server"
 
-const DEFAULT_REDIRECT = "/";
+interface UserWithNotifications extends User {
+  notifications: Notification[]
+}
+
+const DEFAULT_REDIRECT = "/"
 
 /**
  * This should be used any time the redirect path is user-provided
@@ -17,14 +21,14 @@ export function safeRedirect(
   defaultRedirect: string = DEFAULT_REDIRECT,
 ) {
   if (!to || typeof to !== "string") {
-    return defaultRedirect;
+    return defaultRedirect
   }
 
   if (!to.startsWith("/") || to.startsWith("//")) {
-    return defaultRedirect;
+    return defaultRedirect
   }
 
-  return to;
+  return to
 }
 
 /**
@@ -36,41 +40,41 @@ export function safeRedirect(
 export function useMatchesData(
   id: string,
 ): Record<string, unknown> | undefined {
-  const matchingRoutes = useMatches();
+  const matchingRoutes = useMatches()
   const route = useMemo(
     () => matchingRoutes.find((route) => route.id === id),
     [matchingRoutes, id],
-  );
-  return route?.data as Record<string, unknown>;
+  )
+  return route?.data as Record<string, unknown>
 }
 
-function isUser(user: unknown): user is User {
+function isUser(user: unknown): user is UserWithNotifications {
   return (
     user != null &&
     typeof user === "object" &&
     "email" in user &&
     typeof user.email === "string"
-  );
+  )
 }
 
-export function useOptionalUser(): User | undefined {
-  const data = useMatchesData("root");
+export function useOptionalUser(): UserWithNotifications | undefined {
+  const data = useMatchesData("root")
   if (!data || !isUser(data.user)) {
-    return undefined;
+    return undefined
   }
-  return data.user;
+  return data.user
 }
 
-export function useUser(): User {
-  const maybeUser = useOptionalUser();
+export function useUser(): UserWithNotifications {
+  const maybeUser = useOptionalUser()
   if (!maybeUser) {
     throw new Error(
       "No user found in root loader, but user is required by useUser. If user is optional, try useOptionalUser instead.",
-    );
+    )
   }
-  return maybeUser;
+  return maybeUser
 }
 
 export function validateEmail(email: unknown): email is string {
-  return typeof email === "string" && email.length > 3 && email.includes("@");
+  return typeof email === "string" && email.length > 3 && email.includes("@")
 }

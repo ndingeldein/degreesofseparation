@@ -1,19 +1,19 @@
-import type { MetaFunction } from "@remix-run/node";
-import { Form, Link } from "@remix-run/react";
+import type { MetaFunction } from "@remix-run/node"
+import { Form, Link } from "@remix-run/react"
 
-import { useOptionalUser } from "~/utils";
+import { useOptionalUser } from "~/utils"
 
-export const meta: MetaFunction = () => [{ title: "° of Separation" }];
+export const meta: MetaFunction = () => [{ title: "° of Separation" }]
 
 export default function Index() {
-  const user = useOptionalUser();
+  const user = useOptionalUser()
   return (
-    <div className="min-h-dvh flex w-full flex-col">
-      <header className="py-2 px-6 flex justify-between border-b border-gray-700 text-sm">
+    <div className="flex min-h-dvh w-full flex-col">
+      <header className="flex justify-between border-b border-gray-700 px-6 py-2 text-sm">
         <h1 className="">
           <Link
             to="/games"
-            className="hover:underline hover:text-white font-medium"
+            className="font-medium hover:text-white hover:underline"
           >
             Games
           </Link>
@@ -25,7 +25,7 @@ export default function Index() {
               <Form action="/logout" method="post">
                 <button
                   type="submit"
-                  className="hover:text-white hover:underline font-medium"
+                  className="font-medium hover:text-white hover:underline"
                 >
                   Logout
                 </button>
@@ -34,7 +34,7 @@ export default function Index() {
           ) : (
             <Link
               to="/login"
-              className="hover:underline hover:text-white font-medium"
+              className="font-medium hover:text-white hover:underline"
             >
               Login
             </Link>
@@ -42,5 +42,5 @@ export default function Index() {
         </div>
       </header>
     </div>
-  );
+  )
 }

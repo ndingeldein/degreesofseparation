@@ -1,22 +1,34 @@
-import type { Password, User } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import type { Password, User } from "@prisma/client"
+import bcrypt from "bcryptjs"
 
-import { prisma } from "~/db.server";
+import { prisma } from "~/db.server"
 
-export type { User } from "@prisma/client";
+export type { User, Notification } from "@prisma/client"
 
 export async function getUserById(id: User["id"]) {
-  return prisma.user.findUnique({ where: { id } });
+  return prisma.user.findUnique({
+    where: {
+      id: id,
+    },
+    include: {
+      notifications: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
+  })
 }
 
 export async function getUserByEmail(email: User["email"]) {
-  return prisma.user.findUnique({ where: { email } });
+  return prisma.user.findUnique({ where: { email } })
 }
 
-const invitedUsers = ["neil@modiphy.net", "marianne.mattoon@gmail.com"];
+const invitedUsers = ["neil@modiphy.net", "marianne.mattoon@gmail.com"]
 
 export async function getInvitedUser(email: User["email"]) {
-  return invitedUsers.includes(email);
+  return invitedUsers.includes(email)
 }
 
 export async function createUser(
@@ -24,7 +36,7 @@ export async function createUser(
   name: User["name"],
   password: string,
 ) {
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 10)
 
   return prisma.user.create({
     data: {
@@ -36,11 +48,11 @@ export async function createUser(
         },
       },
     },
-  });
+  })
 }
 
 export async function deleteUserByEmail(email: User["email"]) {
-  return prisma.user.delete({ where: { email } });
+  return prisma.user.delete({ where: { email } })
 }
 
 export async function verifyLogin(
@@ -52,23 +64,20 @@ export async function verifyLogin(
     include: {
       password: true,
     },
-  });
+  })
 
   if (!userWithPassword || !userWithPassword.password) {
-    return null;
+    return null
   }
 
-  const isValid = await bcrypt.compare(
-    password,
-    userWithPassword.password.hash,
-  );
+  const isValid = await bcrypt.compare(password, userWithPassword.password.hash)
 
   if (!isValid) {
-    return null;
+    return null
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password: _password, ...userWithoutPassword } = userWithPassword;
+  const { password: _password, ...userWithoutPassword } = userWithPassword
 
-  return userWithoutPassword;
+  return userWithoutPassword
 }
