@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node"
 import { json, redirect } from "@remix-run/node"
 import {
-  Form,
+  Link,
   isRouteErrorResponse,
   useFetcher,
   useLoaderData,
@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import invariant from "tiny-invariant"
 
 import { createGuess, getGame } from "~/models/game.server"
-import type { ApiMovie, CastMember, Turn } from "~/models/schema"
+import { ApiMovie, CastMember, Turn, TurnStatusSchema } from "~/models/schema"
 import { GuessBox } from "~/routes/movies-search"
 import { requireUserId } from "~/session.server"
 import { useUser } from "~/utils"
@@ -105,31 +105,43 @@ export default function GamePage() {
             {game.player2.name}
           </div>
         </div>
-        <div>
+        <div className="mt-3 flex justify-center text-center">
+          <div className="rounded border border-success-500/50 bg-success-600/20 px-3 py-1.5 text-sm">
+            <p className="inline-block font-semibold text-success-400">
+              Destination:
+            </p>{" "}
+            <p className="inline-block text-success-50">
+              {game.destinationMovieTitle}{" "}
+              <span className="text-xs text-success-300">
+                ({game.destinationMovieYear})
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-[400px]">
           <div className="mt-4 flex w-full justify-center text-center">
             {game.status === "Completed" ? (
               <div className="text-center">
                 <span className="font-semibold text-success-400">
                   {game.result === "Player1Wins"
                     ? `${game.player1.name} Wins!`
-                    : `${game.player2.name} Wins!`}
+                    : `${game.player2.name} Wins!`}{" "}
                 </span>
-                <Form
-                  action={`/games/${game.id}/rematch`}
-                  method="post"
-                  className="flex justify-center text-center"
+
+                <Link
+                  to="/games/new"
+                  className="mt-2 flex flex-col items-center justify-center rounded bg-success-600 px-4 py-2 text-white hover:bg-success-500"
                 >
-                  <button
-                    type="submit"
-                    className="mt-2 flex flex-col items-center justify-center rounded bg-success-600 px-4 py-2 text-white hover:bg-success-500"
-                  >
-                    <span>Rematch</span>
-                  </button>
-                </Form>
+                  <span>Rematch</span>
+                </Link>
               </div>
             ) : isUsersTurn ? (
               <div
-                className={isGuessing ? "pointer-events-none opacity-50" : ""}
+                className={
+                  isGuessing
+                    ? "pointer-events-none w-full opacity-50"
+                    : "w-full"
+                }
               >
                 <GuessBox
                   movies={movies}
@@ -173,7 +185,28 @@ export default function GamePage() {
               </div>
             )}
           </div>
-          <Turns turns={game.turns as Turn[]} />
+          {game.winCondition && game.winCondition === "DestinationMovie" ? (
+            <div className="mt-6 flex w-full justify-center">
+              <div className="flex w-auto flex-col rounded-xl bg-gray-700 px-4 py-4 text-center shadow-lg md:w-[380px]">
+                <p className="w-full border-b border-dashed border-gray-600 px-4 pb-2 text-center text-sm font-semibold uppercase tracking-wide text-success-300">
+                  Destination Connection!
+                </p>
+                <p className="mt-3 line-clamp-1 text-gray-100">
+                  {game.destinationMovieTitle} ({game.destinationMovieYear})
+                </p>
+                <div className="mt-3">
+                  <p className="text-xs italic">
+                    {game.turns.length}° of Separation!
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <Turns
+            turns={game.turns as Turn[]}
+            player1={game.player1}
+            player2={game.player2}
+          />
         </div>
       </div>
     </div>
@@ -206,46 +239,87 @@ function CommonCast({ cast }: { cast: CastMember[] }) {
   )
 }
 
-function Turns({ turns }: { turns: Turn[] }) {
+interface TurnUser {
+  id: string
+  name: string
+}
+
+function Turns({
+  turns,
+  player1,
+  player2,
+}: {
+  turns: Turn[]
+  player1: TurnUser
+  player2: TurnUser
+}) {
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 pt-12">
+    <div className="mx-auto flex w-full max-w-[380px] flex-col items-center justify-center space-y-6 pt-6">
       {turns.map((turn, index) => (
-        <div key={turn.id}>
+        <div key={turn.id} className="w-full">
           {turn.status === "Success" ? (
             <CommonCast cast={turn.commonCast as CastMember[]} />
           ) : null}
-          <div
-            className={`${
-              index ? "opacity-50 hover:opacity-100" : ""
-            } flex w-auto flex-col items-center justify-center rounded-xl bg-gray-700 px-4 py-4 text-center shadow-lg md:w-[380px]`}
-          >
-            <p className="line-clamp-1 text-gray-100">
-              {turn.movieTitle} ({turn.movieYear})
-            </p>
-            <div className="mt-3 flex flex-col space-y-0.5 text-xs">
-              {turn.guesses.map((guess) => (
-                <div
-                  key={guess.id}
-                  className="text flex items-center justify-between rounded bg-gray-600 px-2 py-1"
-                >
-                  <p className="mr-3 line-clamp-1 text-gray-100">
-                    {guess.movieTitle}{" "}
-                    <span className="text-xs text-gray-400">
-                      ({guess.movieYear})
-                    </span>
-                  </p>
-                  <p className="text-gray-100">{guess.result ? "✅" : "❌"}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3">
-              <p className="text-xs italic">{turn.status}</p>
-            </div>
-          </div>
+          <TurnCard
+            turn={turn}
+            index={index}
+            player={turn.userId === player1.id ? player1 : player2}
+          />
         </div>
       ))}
     </div>
   )
+}
+
+function TurnCard({
+  turn,
+  index,
+  player,
+}: {
+  turn: Turn
+  index: number
+  player: TurnUser
+}) {
+  return (
+    <div
+      className={`${
+        index ? "opacity-50 hover:opacity-100" : ""
+      } flex w-full flex-col items-center justify-center rounded-xl bg-gray-700 px-4 py-4 text-center shadow-lg`}
+    >
+      <p className="line-clamp-1 text-gray-100">
+        {turn.movieTitle} ({turn.movieYear})
+      </p>
+      <div className="mt-3 flex flex-col space-y-0.5 text-xs">
+        {turn.guesses.map((guess) => (
+          <div
+            key={guess.id}
+            className="text flex items-center justify-between rounded bg-gray-600 px-2 py-1"
+          >
+            <p className="mr-3 line-clamp-1 text-gray-100">
+              {guess.movieTitle}{" "}
+              <span className="text-xs text-gray-400">({guess.movieYear})</span>
+            </p>
+            <p className="text-gray-100">{guess.result ? "✅" : "❌"}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3">
+        <p className="text-xs italic">{getPlayerTurnStatus(turn, player)}</p>
+      </div>
+    </div>
+  )
+}
+
+function getPlayerTurnStatus(turn: Turn, player: TurnUser) {
+  if (turn.status === TurnStatusSchema.enum.Success) {
+    return `Successful guess by ${player.name}`
+  }
+
+  if (turn.status === TurnStatusSchema.enum.Fail) {
+    return `Too many wrong guesses by ${player.name}`
+  }
+
+  return `${player.name}'s turn in progress...`
 }
 
 export function ErrorBoundary() {

@@ -52,18 +52,22 @@ function GuessBox({
   isGuessing,
   handleOnValueChange,
   handleOnSelect,
+  buttonText = "Select a movie...",
+  keyCode = "k",
 }: {
   movies: ApiMovie[]
   isGuessing: boolean
   handleOnValueChange: (currentValue: string) => void
   handleOnSelect: (movie: ApiMovie) => void
+  buttonText?: string
+  keyCode?: string
 }) {
   const [open, setOpen] = useState(false)
   // const [value] = useState("");
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === keyCode && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setOpen((open) => !open)
       }
@@ -71,7 +75,7 @@ function GuessBox({
 
     document.addEventListener("keydown", down)
     return () => document.removeEventListener("keydown", down)
-  }, [])
+  }, [keyCode])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -80,11 +84,13 @@ function GuessBox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="mx-auto w-[400px] justify-between"
+          className="mx-auto w-full max-w-[400px] justify-between"
         >
-          Select a movie...
+          {buttonText}
           <span className="flex items-center space-x-1">
-            <span className="rounded bg-gray-700 px-1 py-0.5 text-xs">⌘ K</span>
+            <span className="rounded bg-gray-700 px-1 py-0.5 text-xs">
+              ⌘ {keyCode.toUpperCase()}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </span>
         </Button>

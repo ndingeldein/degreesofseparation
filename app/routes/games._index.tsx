@@ -3,8 +3,12 @@ import { json } from "@remix-run/node"
 import { NavLink, useLoaderData } from "@remix-run/react"
 
 import { getPlayerGames } from "~/models/game.server"
-import type { GameResult, GameStatus } from "~/models/schema"
-import { GameResultSchema, GameStatusSchema } from "~/models/schema"
+import type { GameResult, GameStatus, GameWinCondition } from "~/models/schema"
+import {
+  GameResultSchema,
+  GameStatusSchema,
+  GameWinConditionSchema,
+} from "~/models/schema"
 import { requireUserId } from "~/session.server"
 import { useUser } from "~/utils"
 
@@ -21,6 +25,7 @@ interface Game {
   status: GameStatus
   result?: GameResult
   currentTurnUserId: string
+  winCondition?: GameWinCondition
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -128,6 +133,19 @@ export default function GameIndexPage() {
   )
 }
 
+function getGameWinCondition(winCondition: GameWinCondition) {
+  switch (winCondition) {
+    case GameWinConditionSchema.enum.Draw:
+      return "Draw"
+    case GameWinConditionSchema.enum.DestinationMovie:
+      return "Destination Connection!"
+    case GameWinConditionSchema.enum.Forfeit:
+      return "Forfeit"
+    case GameWinConditionSchema.enum.WrongGuess:
+      return "Wrong Guess"
+  }
+}
+
 function GameCard({
   game,
   headerText,
@@ -157,7 +175,9 @@ function GameCard({
         </span>
       </div>
       <div className="w-full border-t border-dashed border-gray-600 py-2 text-center text-xs">
-        {game.status}
+        {game.winCondition
+          ? getGameWinCondition(game.winCondition)
+          : game.status}
       </div>
     </NavLink>
   )

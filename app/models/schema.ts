@@ -30,6 +30,14 @@ const GameResultSchema = z.enum([
 ])
 type GameResult = z.infer<typeof GameResultSchema>
 
+const GameWinConditionSchema = z.enum([
+  "Draw",
+  "WrongGuess",
+  "DestinationMovie",
+  "Forfeit",
+])
+type GameWinCondition = z.infer<typeof GameWinConditionSchema>
+
 const TurnStatusSchema = z.enum(["InProgress", "Success", "Fail"])
 type TurnStatus = z.infer<typeof TurnStatusSchema>
 
@@ -45,6 +53,7 @@ type Guess = z.infer<typeof GuessSchema>
 
 const TurnSchema = z.object({
   id: z.string(),
+  userId: z.string(),
   movieId: z.number(),
   status: TurnStatusSchema,
   movieTitle: z.string(),
@@ -65,10 +74,13 @@ const GameSchema = z.object({
     id: z.string(),
     name: z.string(),
   }),
+  destinationMovieId: z.number(),
+  destinationMovieTitle: z.string(),
+  destinationMovieYear: z.number(),
   turns: z.array(TurnSchema),
   status: GameStatusSchema,
   result: GameResultSchema.optional(),
-  forfeit: z.boolean().optional(),
+  winCondition: GameWinConditionSchema.optional(),
   currentTurnUserId: z.string(),
 })
 type Game = z.infer<typeof GameSchema>
@@ -89,6 +101,7 @@ export {
   ApiMoviesSchema,
   GameStatusSchema,
   GameResultSchema,
+  GameWinConditionSchema,
   GameSchema,
   GuessSchema,
   TurnSchema,
@@ -103,6 +116,7 @@ export type {
   ApiMovies,
   GameStatus,
   GameResult,
+  GameWinCondition,
   Game,
   Guess,
   Turn,

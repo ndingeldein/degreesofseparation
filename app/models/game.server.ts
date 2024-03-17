@@ -2,13 +2,14 @@ import type { User, Game, Prisma } from "@prisma/client"
 import invariant from "tiny-invariant"
 
 import { prisma } from "~/db.server"
-import type { CastMember } from "~/models/schema"
+import type { CastMember, GameResult, GameWinCondition } from "~/models/schema"
 import {
   ApiMovieSchema,
   ApiMoviesSchema,
   CastMembersSchema,
   GameResultSchema,
   GameStatusSchema,
+  GameWinConditionSchema,
   TurnStatusSchema,
 } from "~/models/schema"
 
@@ -34,11 +35,17 @@ export async function createGame({
   movieId,
   movieTitle,
   movieYear,
+  destinationMovieId,
+  destinationMovieTitle,
+  destinationMovieYear,
 }: {
   userId: User["id"]
   movieId: number
   movieTitle: string
   movieYear: number
+  destinationMovieId: number
+  destinationMovieTitle: string
+  destinationMovieYear: number
 }) {
   const player2 = await prisma.user.findFirst({
     where: {
@@ -58,6 +65,9 @@ export async function createGame({
       player1Id: userId,
       player2Id: player2.id,
       currentTurnUserId: player2.id,
+      destinationMovieId: destinationMovieId,
+      destinationMovieTitle: destinationMovieTitle,
+      destinationMovieYear: destinationMovieYear,
     },
   })
 
@@ -155,6 +165,7 @@ export function getPlayerGames({ userId }: { userId: User["id"] }) {
       player2: true,
       status: true,
       result: true,
+      winCondition: true,
       currentTurnUserId: true,
     },
     orderBy: { updatedAt: "desc" },
@@ -170,6 +181,19 @@ async function getTurn(turnId: string) {
   })
   invariant(turn, "turn not found")
   return turn
+}
+
+async function markTurnAsSuccess(turnId: string, commonCast: CastMember[]) {
+  const commonCastAsJson = commonCast as Prisma.JsonArray
+  await prisma.turn.update({
+    where: {
+      id: turnId,
+    },
+    data: {
+      status: TurnStatusSchema.enum.Success,
+      commonCast: commonCastAsJson,
+    },
+  })
 }
 
 async function createNextTurn({
@@ -189,21 +213,11 @@ async function createNextTurn({
   turnId: string
   guessMovieId: number
 }) {
-  const commonCastAsJson = commonCast as Prisma.JsonArray
-
   // console.log("common actors")
   // console.log(commonCast)
 
   // previous turn was a success
-  await prisma.turn.update({
-    where: {
-      id: turnId,
-    },
-    data: {
-      status: TurnStatusSchema.enum.Success,
-      commonCast: commonCastAsJson,
-    },
-  })
+  await markTurnAsSuccess(turnId, commonCast)
 
   // create new turn
 
@@ -241,18 +255,13 @@ async function createNextTurn({
 
 async function endGame({
   gameId,
-  player1Id,
-  userId,
+  result,
+  winCondition,
 }: {
   gameId: string
-  player1Id: string
-  userId: string
+  result: GameResult
+  winCondition: GameWinCondition
 }) {
-  const result =
-    userId === player1Id
-      ? GameResultSchema.enum.Player2Wins
-      : GameResultSchema.enum.Player1Wins
-
   await prisma.game.update({
     where: {
       id: gameId,
@@ -260,6 +269,7 @@ async function endGame({
     data: {
       status: GameStatusSchema.enum.Completed,
       result: result,
+      winCondition: winCondition,
     },
   })
 }
@@ -364,15 +374,42 @@ export async function createGuess({
   })
 
   if (result) {
-    await createNextTurn({
-      commonCast,
-      gameId,
-      userId,
-      player1Id,
-      player2Id,
-      turnId,
-      guessMovieId,
+    // check if correct guessMovieId === game.destinationMovieId
+    const game = await prisma.game.findUnique({
+      where: {
+        id: gameId,
+      },
+      select: {
+        destinationMovieId: true,
+      },
     })
+
+    invariant(game, "game not found")
+
+    if (game.destinationMovieId === guessMovieId) {
+      await markTurnAsSuccess(turnId, commonCast)
+
+      const result =
+        userId === player1Id
+          ? GameResultSchema.enum.Player1Wins
+          : GameResultSchema.enum.Player2Wins
+
+      endGame({
+        gameId,
+        result,
+        winCondition: GameWinConditionSchema.enum.DestinationMovie,
+      })
+    } else {
+      await createNextTurn({
+        commonCast,
+        gameId,
+        userId,
+        player1Id,
+        player2Id,
+        turnId,
+        guessMovieId,
+      })
+    }
   } else if (totalGuesses >= 2) {
     // mark turn as failed
     await prisma.turn.update({
@@ -385,7 +422,17 @@ export async function createGuess({
     })
 
     // end game
-    endGame({ gameId, player1Id, userId })
+
+    const result =
+      userId === player1Id
+        ? GameResultSchema.enum.Player2Wins
+        : GameResultSchema.enum.Player1Wins
+
+    endGame({
+      gameId,
+      result,
+      winCondition: GameWinConditionSchema.enum.WrongGuess,
+    })
   }
 }
 

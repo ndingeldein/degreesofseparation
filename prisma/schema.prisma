@@ -27,19 +27,22 @@ model User {
 }
 
 model Game {
-  id                String      @id @default(cuid())
-  player1Id         String
-  player2Id         String
-  turns             Turn[]
-  status            GameStatus  @default(Pending)
-  result            GameResult?
-  forfeit           Boolean?
-  player1           User        @relation("Player1Games", fields: [player1Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  player2           User        @relation("Player2Games", fields: [player2Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  currentTurnUser   User?       @relation("CurrentTurn", fields: [currentTurnUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  currentTurnUserId String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                    String            @id @default(cuid())
+  player1Id             String
+  player2Id             String
+  destinationMovieId    Int               @default(5925)
+  destinationMovieTitle String            @default("The Great Escape")
+  destinationMovieYear  Int               @default(1963)
+  turns                 Turn[]
+  status                GameStatus        @default(Pending)
+  result                GameResult?
+  winCondition          GameWinCondition?
+  player1               User              @relation("Player1Games", fields: [player1Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  player2               User              @relation("Player2Games", fields: [player2Id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  currentTurnUser       User?             @relation("CurrentTurn", fields: [currentTurnUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  currentTurnUserId     String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 }
 
 model Turn {
@@ -99,6 +102,13 @@ enum GameResult {
   Player2Wins
   Draw
   Canceled
+}
+
+enum GameWinCondition {
+  Draw
+  WrongGuess
+  DestinationMovie
+  Forfeit
 }
 
 enum TurnStatus {
